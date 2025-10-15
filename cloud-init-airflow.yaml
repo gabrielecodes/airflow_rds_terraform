@@ -1,0 +1,47 @@
+#cloud-config
+users:
+  - name: airflow
+    groups: [docker, sudo]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    lock_passwd: true
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - unzip
+  - software-properties-common
+
+runcmd:
+  # Docker setup 
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - bash -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable" > /etc/apt/sources.list.d/docker.list'
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+  # Enable & start docker
+  - systemctl enable docker
+  - systemctl start docker
+
+  # Setup Airflow dir
+  - mkdir -p /opt/airflow
+  - chown -R airflow:airflow /home/airflow/airflow
+
+  - until docker info >/dev/null 2>&1; do echo "Waiting for Docker..."; sleep 3; done
+
+  # Start Airflow as "airflow" user  
+  - su - airflow -c "
+      cd /home/airflow/airflow && \
+      curl -LfO https://airflow.apache.org/docs/apache-airflow/3.1.0/docker-compose.yaml && \
+      echo AIRFLOW_UID=\$(id -u) > .env && \
+      docker-compose pull && \
+      docker-compose up -d
+    "
+
+final_message: "The Airflow EC2 instance is ready."
