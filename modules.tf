@@ -6,6 +6,8 @@ module "airflow" {
   vpc_id             = aws_vpc.main.id
   public_subnet_cidr = var.public_subnet_cidr
   instance_type      = var.instance_type
+  airflow_username   = var.airflow_username
+  airflow_password   = var.airflow_password
 }
 
 module "rds_instance" {
@@ -20,5 +22,4 @@ module "rds_instance" {
   rds_replica2_subnet_cidr = var.rds_replica2_subnet_cidr
   rds_username             = var.rds_username
   front_sg_id              = module.airflow.sg_id
-
 }

@@ -56,3 +56,13 @@ variable "rds_username" {
   type        = string
   description = "RDS database username"
 }
+
+variable "airflow_username" {
+  description = "Airflow UI login username"
+  type        = string
+}
+
+variable "airflow_password" {
+  description = "Airflow UI login password"
+  type        = string
+}

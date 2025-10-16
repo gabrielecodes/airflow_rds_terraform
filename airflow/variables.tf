@@ -19,6 +19,16 @@ variable "instance_type" {
 }
 
 variable "public_subnet_cidr" {
-  type        = string
   description = "CIDR for public subnet"
+  type        = string
+}
+
+variable "airflow_username" {
+  description = "Airflow UI login username"
+  type        = string
+}
+
+variable "airflow_password" {
+  description = "Airflow UI login password"
+  type        = string
 }

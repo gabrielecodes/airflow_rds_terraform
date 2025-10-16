@@ -92,7 +92,12 @@ resource "aws_instance" "myfirst" {
   key_name               = "terraform_ec2_key"
   vpc_security_group_ids = [aws_security_group.sg.id]
   subnet_id              = aws_subnet.public.id
-  user_data              = file("${path.root}/cloud-init.yaml")
+  # user_data              = file("${path.root}/cloud-init.yaml")
+
+  user_data = templatefile("${path.module}/cloud-init.yaml", {
+    airflow_username = var.airflow_username
+    airflow_password = var.airflow_password
+  })
 
   root_block_device {
     volume_size           = 20
