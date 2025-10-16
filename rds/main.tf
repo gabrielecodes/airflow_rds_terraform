@@ -4,8 +4,9 @@
 
 # RDS master subnet
 resource "aws_subnet" "rds_master" {
-  vpc_id     = var.vpc_id
-  cidr_block = var.rds_master_subnet_cidr
+  vpc_id            = var.vpc_id
+  cidr_block        = var.rds_master_subnet_cidr
+  availability_zone = "${var.region}a"
 
   tags = {
     Name = "${var.project}-rds-master-subnet"
@@ -16,7 +17,7 @@ resource "aws_subnet" "rds_master" {
 resource "aws_subnet" "rds_replica1" {
   vpc_id            = var.vpc_id
   cidr_block        = var.rds_replica1_subnet_cidr
-  availability_zone = "eu-north-1a"
+  availability_zone = "${var.region}b"
 
   tags = {
     Name = "${var.project}-rds-replica1-subnet"
@@ -27,7 +28,7 @@ resource "aws_subnet" "rds_replica1" {
 resource "aws_subnet" "rds_replica2" {
   vpc_id            = var.vpc_id
   cidr_block        = var.rds_replica2_subnet_cidr
-  availability_zone = "eu-north-1b"
+  availability_zone = "${var.region}c"
 
   tags = {
     Name = "${var.project}-rds-replica2-subnet"
@@ -78,9 +79,10 @@ resource "aws_db_instance" "rds_instance" {
   identifier                  = "${var.project}-rds-instance"
   allocated_storage           = 20
   engine                      = "postgres"
-  engine_version              = "18.0"
+  engine_version              = "17.4"
   instance_class              = var.rds_instance_type
   manage_master_user_password = true
+  username                    = var.rds_username
   skip_final_snapshot         = true
   db_subnet_group_name        = aws_db_subnet_group.rds_subnet_group.name
   vpc_security_group_ids      = [aws_security_group.rds_sg.id]

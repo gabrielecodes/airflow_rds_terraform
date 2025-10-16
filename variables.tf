@@ -31,7 +31,7 @@ variable "public_subnet_cidr" {
 variable "rds_instance_type" {
   description = "Instance type for RDS"
   type        = string
-  default     = "t3.micro"
+  default     = "db.t3.micro"
 }
 
 variable "rds_master_subnet_cidr" {
@@ -50,4 +50,9 @@ variable "rds_replica2_subnet_cidr" {
   type        = string
   description = "rds replica2 subnet cidr"
   default     = "10.0.4.0/24"
+}
+
+variable "rds_username" {
+  type        = string
+  description = "RDS database username"
 }

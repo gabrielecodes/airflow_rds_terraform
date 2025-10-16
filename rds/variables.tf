@@ -37,3 +37,8 @@ variable "front_sg_id" {
   description = "Security group ID for Airflow"
   type        = string
 }
+
+variable "rds_username" {
+  description = "RDS database username"
+  type        = string
+}

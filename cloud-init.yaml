@@ -37,6 +37,7 @@ runcmd:
   - sudo curl -LfO https://airflow.apache.org/docs/apache-airflow/3.1.0/docker-compose.yaml
   - echo "AIRFLOW_UID=$(id -u airflow)" | sudo tee .env
   - sudo chown airflow:airflow .env
-  - sudo -u airflow -H bash -c "docker-compose pull && docker-compose up"
+  - sudo docker-compose pull
+  - sudo -u airflow -H bash -c "docker-compose up"
 
 final_message: "The Airflow EC2 instance is ready."

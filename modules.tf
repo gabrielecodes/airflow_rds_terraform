@@ -18,5 +18,7 @@ module "rds_instance" {
   rds_master_subnet_cidr   = var.rds_master_subnet_cidr
   rds_replica1_subnet_cidr = var.rds_replica1_subnet_cidr
   rds_replica2_subnet_cidr = var.rds_replica2_subnet_cidr
+  rds_username             = var.rds_username
   front_sg_id              = module.airflow.sg_id
+
 }
