@@ -88,11 +88,17 @@ resource "aws_key_pair" "terraform_ec2_key" {
 
 resource "aws_instance" "myfirst" {
   ami                    = "ami-0393c82ef8ecfdbed"
-  instance_type          = "t3.micro"
+  instance_type          = var.instance_type
   key_name               = "terraform_ec2_key"
   vpc_security_group_ids = [aws_security_group.sg.id]
   subnet_id              = aws_subnet.public.id
-  user_data              = file("${path.root}/cloud-init-airflow.yaml")
+  user_data              = file("${path.root}/cloud-init.yaml")
+
+  root_block_device {
+    volume_size           = 20
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
 
   tags = {
     Name = "${var.project}-airflow-instance"

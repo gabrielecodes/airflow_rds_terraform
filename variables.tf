@@ -19,7 +19,7 @@ variable "vpc_cidr" {
 variable "instance_type" {
   description = "EC2 Instance type"
   type        = string
-  default     = "t3.micro"
+  default     = "t3.large"
 }
 
 variable "public_subnet_cidr" {

@@ -1,5 +1,5 @@
 module "airflow" {
-  source = "./front"
+  source = "./airflow"
 
   project            = var.project
   region             = var.region

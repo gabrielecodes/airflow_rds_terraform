@@ -1,0 +1,42 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+
+runcmd:
+  # Add Docker's official GPG key:
+  - sudo apt-get update
+  - sudo install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+  - sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+  # Add the repository to Apt sources:
+  - sudo bash -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable" > /etc/apt/sources.list.d/docker.list'
+  - sudo apt-get update
+
+  # Install everything docker & start it
+  - sudo apt-get install -y docker-ce docker-compose docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - sudo systemctl start docker
+
+  # Add airflow user
+  - sudo groupadd -f docker
+  - sudo adduser --disabled-password --gecos "" airflow && sudo usermod -aG docker airflow
+
+  # Setup Airflow dir
+  - sudo mkdir -p /opt/airflow
+  - sudo mkdir -p /opt/airflow/dags
+  - sudo chown -R airflow:airflow /opt/airflow
+
+  - until sudo docker info >/dev/null 2>&1; do echo "Waiting for Docker..."; sleep 3; done
+
+  - cd /opt/airflow
+  - sudo curl -LfO https://airflow.apache.org/docs/apache-airflow/3.1.0/docker-compose.yaml
+  - echo "AIRFLOW_UID=$(id -u airflow)" | sudo tee .env
+  - sudo chown airflow:airflow .env
+  - sudo -u airflow -H bash -c "docker-compose pull && docker-compose up"
+
+final_message: "The Airflow EC2 instance is ready."
