@@ -94,7 +94,7 @@ resource "aws_instance" "myfirst" {
   subnet_id              = aws_subnet.public.id
   # user_data              = file("${path.root}/cloud-init.yaml")
 
-  user_data = templatefile("${path.module}/cloud-init.yaml", {
+  user_data = templatefile("${path.root}/cloud-init.yaml", {
     airflow_username = var.airflow_username
     airflow_password = var.airflow_password
   })
