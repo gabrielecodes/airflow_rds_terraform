@@ -52,7 +52,7 @@ resource "aws_security_group" "sg" {
   }
 }
 
-# Create an Internet Gateway
+# Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = var.vpc_id
 
@@ -61,7 +61,7 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# Create a public route table
+# Public route table
 resource "aws_route_table" "public_rt" {
   vpc_id = var.vpc_id
 
@@ -86,17 +86,34 @@ resource "aws_key_pair" "terraform_ec2_key" {
   public_key = file("terraform_ec2_key.pub")
 }
 
-resource "aws_instance" "myfirst" {
+# Retrieve RDS master password from Secrets Manager
+data "aws_secretsmanager_secret" "rds_master_user_secret" {
+  arn = aws_db_instance.rds_instance.master_user_secret[0].secret_arn
+}
+
+data "aws_secretsmanager_secret_version" "rds_master_password_version" {
+  secret_id = data.aws_secretsmanager_secret.rds_master_user_secret.id
+}
+
+# Retrieve RDS endpoint from SSM Parameter Store
+data "aws_ssm_parameter" "rds_endpoint" {
+  name = "/${var.project}/rds/endpoint"
+}
+
+# Airflow instance
+resource "aws_instance" "airflow" {
   ami                    = "ami-0393c82ef8ecfdbed"
   instance_type          = var.instance_type
-  key_name               = "terraform_ec2_key"
+  key_name               = var.ec2_key
   vpc_security_group_ids = [aws_security_group.sg.id]
   subnet_id              = aws_subnet.public.id
-  # user_data              = file("${path.root}/cloud-init.yaml")
 
   user_data = templatefile("${path.root}/cloud-init.yaml", {
     airflow_username = var.airflow_username
     airflow_password = var.airflow_password
+    rds_username     = var.rds_username
+    rds_password     = data.aws_secretsmanager_secret_version.rds_master_password_version.secret_string
+    rds_endpoint     = data.aws_ssm_parameter.rds_endpoint.value
   })
 
   root_block_device {
@@ -108,4 +125,8 @@ resource "aws_instance" "myfirst" {
   tags = {
     Name = "${var.project}-airflow-instance"
   }
+
+  depends_on = [
+    aws_db_instance.rds_instance
+  ]
 }

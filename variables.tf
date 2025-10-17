@@ -66,3 +66,8 @@ variable "airflow_password" {
   description = "Airflow UI login password"
   type        = string
 }
+
+variable "ec2_key" {
+  description = "EC2 Key Pair name"
+  type        = string
+}

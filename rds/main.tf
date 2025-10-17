@@ -74,7 +74,7 @@ resource "aws_security_group" "rds_sg" {
 # INSTANCE
 #################################
 
-#Multi-AZ PostgreSQL RDS instance
+# Multi-AZ PostgreSQL RDS instance
 resource "aws_db_instance" "rds_instance" {
   identifier                  = "${var.project}-rds-instance"
   allocated_storage           = 20
@@ -92,4 +92,21 @@ resource "aws_db_instance" "rds_instance" {
   tags = {
     Name = "${var.project}-rds-instance"
   }
+}
+
+# Retrieve RDS master password from Secrets Manager (managed by RDS)
+data "aws_secretsmanager_secret" "rds_master_user_secret" {
+  arn = aws_db_instance.rds_instance.master_user_secret[0].secret_arn
+}
+
+data "aws_secretsmanager_secret_version" "rds_master_password_version" {
+  secret_id = data.aws_secretsmanager_secret.rds_master_user_secret.id
+}
+
+# Store RDS endpoint in SSM Parameter Store
+resource "aws_ssm_parameter" "rds_endpoint" {
+  name        = "/${var.project}/rds/endpoint"
+  type        = "String"
+  value       = aws_db_instance.rds_instance.address
+  description = "RDS endpoint for ${var.project}"
 }

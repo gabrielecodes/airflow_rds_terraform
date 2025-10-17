@@ -34,7 +34,58 @@ runcmd:
   - sudo mkdir -p /opt/airflow/dags
   - sudo chown -R airflow:airflow /opt/airflow
 
+  # Make the dir for dbt
+  - sudo mkdir -p /opt/airflow/dbt
+  - sudo chown -R airflow:airflow /opt/airflow/dbt
+
+  # Wait for docker to be ready
   - until sudo docker info >/dev/null 2>&1; do echo "Waiting for Docker..."; sleep 3; done
+  - sudo docker pull ghcr.io/dbt-labs/dbt-postgres:1.9.latest
+
+  # Create the 'main' database
+  - |
+    sudo -u postgres psql -h ${rds_endpoint} -U ${rds_username} -c "CREATE DATABASE main;"
+
+  - |
+    sudo bash -c 'cat << EOF > /opt/airflow/dbt/profiles.yml
+    default:
+      target: dev
+      outputs:
+        dev:
+          type: postgres
+          host: ${rds_endpoint}
+          user: ${rds_username}
+          password: ${rds_password}
+          port: 5432
+          dbname: main
+          schema: public
+    EOF'  
+
+  # Add initial DBT dag
+  - | 
+    sudo bash -c 'cat << EOF > /opt/airflow/dags/dbt_runs.py
+    from airflow import DAG
+    from datetime import datetime
+    from airflow.providers.docker.operators.docker import DockerOperator
+
+    START_DATE = datetime(2025, 1, 1)
+
+    with DAG(
+        dag_id="dbt_runs",
+        start_date=START_DATE,
+        schedule="@daily",
+        catchup=False,
+        tags=["dbt"],
+        default_args={"owner": "airflow"},
+    ):
+      dbt_task = DockerOperator(
+          task_id='dbt_run_all',
+          image='ghcr.io/dbt-labs/dbt-postgres:1.9.latest',
+          command='dbt run',
+          force_pull=False, 
+          auto_remove=True,
+      )
+    EOF'  
 
   - cd /opt/airflow
   - sudo curl -LfO https://airflow.apache.org/docs/apache-airflow/3.1.0/docker-compose.yaml

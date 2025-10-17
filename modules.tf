@@ -8,6 +8,8 @@ module "airflow" {
   instance_type      = var.instance_type
   airflow_username   = var.airflow_username
   airflow_password   = var.airflow_password
+  ec2_key            = var.ec2_key
+  rds_username       = var.rds_username
 }
 
 module "rds_instance" {

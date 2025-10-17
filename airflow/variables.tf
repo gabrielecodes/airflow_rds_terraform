@@ -32,3 +32,13 @@ variable "airflow_password" {
   description = "Airflow UI login password"
   type        = string
 }
+
+variable "ec2_key" {
+  description = "SSH key pair name for EC2 instance"
+  type        = string
+}
+
+variable "rds_username" {
+  description = "RDS master username for the Airflow DBT connection"
+  type        = string
+}
