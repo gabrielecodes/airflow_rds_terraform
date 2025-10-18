@@ -23,14 +23,9 @@ variable "rds_master_subnet_cidr" {
   description = "rds master subnet cidr"
 }
 
-variable "rds_replica1_subnet_cidr" {
+variable "rds_master_subnet_cidr_b" {
   type        = string
-  description = "rds replica1 subnet cidr"
-}
-
-variable "rds_replica2_subnet_cidr" {
-  type        = string
-  description = "rds replica2 subnet cidr"
+  description = "rds secondary master subnet cidr in different AZ"
 }
 
 variable "front_sg_id" {
@@ -40,5 +35,10 @@ variable "front_sg_id" {
 
 variable "rds_username" {
   description = "RDS database username"
+  type        = string
+}
+
+variable "rds_password" {
+  description = "RDS database password"
   type        = string
 }

@@ -40,21 +40,20 @@ variable "rds_master_subnet_cidr" {
   default     = "10.0.2.0/24"
 }
 
-variable "rds_replica1_subnet_cidr" {
+variable "rds_master_subnet_cidr_b" {
   type        = string
-  description = "rds replica1 subnet cidr"
+  description = "rds secondary master subnet cidr in different AZ"
   default     = "10.0.3.0/24"
-}
-
-variable "rds_replica2_subnet_cidr" {
-  type        = string
-  description = "rds replica2 subnet cidr"
-  default     = "10.0.4.0/24"
 }
 
 variable "rds_username" {
   type        = string
   description = "RDS database username"
+}
+
+variable "rds_password" {
+  type        = string
+  description = "RDS database password"
 }
 
 variable "airflow_username" {
@@ -67,7 +66,17 @@ variable "airflow_password" {
   type        = string
 }
 
+variable "dags_bucket" {
+  description = "S3 bucket name for Airflow DAGs"
+  type        = string
+}
+
 variable "ec2_key" {
   description = "EC2 Key Pair name"
+  type        = string
+}
+
+variable "account_id" {
+  description = "AWS Account ID"
   type        = string
 }

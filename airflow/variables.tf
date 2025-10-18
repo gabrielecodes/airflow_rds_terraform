@@ -38,7 +38,17 @@ variable "ec2_key" {
   type        = string
 }
 
-variable "rds_username" {
-  description = "RDS master username for the Airflow DBT connection"
+variable "rds_endpoint" {
+  description = "RDS endpoint"
+  type        = string
+}
+
+variable "dags_bucket" {
+  description = "S3 bucket name for Airflow DAGs"
+  type        = string
+}
+
+variable "account_id" {
+  description = "AWS account id"
   type        = string
 }

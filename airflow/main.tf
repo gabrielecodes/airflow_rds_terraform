@@ -86,18 +86,59 @@ resource "aws_key_pair" "terraform_ec2_key" {
   public_key = file("terraform_ec2_key.pub")
 }
 
-# Retrieve RDS master password from Secrets Manager
-data "aws_secretsmanager_secret" "rds_master_user_secret" {
-  arn = aws_db_instance.rds_instance.master_user_secret[0].secret_arn
+# Create role for the Ec2 instace
+resource "aws_iam_role" "ec2_instance_role" {
+  name = "${var.project}-ec2-instance-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      },
+    ]
+  })
 }
 
-data "aws_secretsmanager_secret_version" "rds_master_password_version" {
-  secret_id = data.aws_secretsmanager_secret.rds_master_user_secret.id
+# Create instance profile for the EC2 instance
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "${var.project}-ec2-instance-profile"
+  role = aws_iam_role.ec2_instance_role.name
 }
 
-# Retrieve RDS endpoint from SSM Parameter Store
-data "aws_ssm_parameter" "rds_endpoint" {
-  name = "/${var.project}/rds/endpoint"
+# Attach S3 read only policy to the EC2 instance role
+resource "aws_iam_role_policy_attachment" "ec2_instance_role_attachment" {
+  role       = aws_iam_role.ec2_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+
+# Read username, password and endpoint from SSM
+resource "aws_iam_policy" "ssm_read_limited" {
+  name        = "${var.project}-ssm-read-limited"
+  description = "Allow EC2 to read specific SSM parameters"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParametersByPath"
+        ],
+        Resource : "arn:aws:ssm:*:*:parameter/airflow/variables/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_read_attach" {
+  role       = aws_iam_role.ec2_instance_role.name
+  policy_arn = aws_iam_policy.ssm_read_limited.arn
 }
 
 # Airflow instance
@@ -111,10 +152,11 @@ resource "aws_instance" "airflow" {
   user_data = templatefile("${path.root}/cloud-init.yaml", {
     airflow_username = var.airflow_username
     airflow_password = var.airflow_password
-    rds_username     = var.rds_username
-    rds_password     = data.aws_secretsmanager_secret_version.rds_master_password_version.secret_string
-    rds_endpoint     = data.aws_ssm_parameter.rds_endpoint.value
+    rds_endpoint     = var.rds_endpoint
+    dags_bucket      = var.dags_bucket
   })
+
+  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
 
   root_block_device {
     volume_size           = 20
@@ -125,8 +167,4 @@ resource "aws_instance" "airflow" {
   tags = {
     Name = "${var.project}-airflow-instance"
   }
-
-  depends_on = [
-    aws_db_instance.rds_instance
-  ]
 }

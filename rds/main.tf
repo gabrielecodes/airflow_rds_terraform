@@ -13,32 +13,20 @@ resource "aws_subnet" "rds_master" {
   }
 }
 
-# First RDS replica subnet
-resource "aws_subnet" "rds_replica1" {
+resource "aws_subnet" "rds_master_b" {
   vpc_id            = var.vpc_id
-  cidr_block        = var.rds_replica1_subnet_cidr
+  cidr_block        = var.rds_master_subnet_cidr_b
   availability_zone = "${var.region}b"
 
   tags = {
-    Name = "${var.project}-rds-replica1-subnet"
-  }
-}
-
-# Second RDS replica subnet
-resource "aws_subnet" "rds_replica2" {
-  vpc_id            = var.vpc_id
-  cidr_block        = var.rds_replica2_subnet_cidr
-  availability_zone = "${var.region}c"
-
-  tags = {
-    Name = "${var.project}-rds-replica2-subnet"
+    Name = "${var.project}-rds-master-subnet-b"
   }
 }
 
 # Create a DB subnet group for RDS
 resource "aws_db_subnet_group" "rds_subnet_group" {
   name       = "${var.project}-rds-subnet-group"
-  subnet_ids = [aws_subnet.rds_master.id, aws_subnet.rds_replica1.id, aws_subnet.rds_replica2.id]
+  subnet_ids = [aws_subnet.rds_master.id, aws_subnet.rds_master_b.id]
 
   tags = {
     Name = "${var.project}-rds-subnet-group"
@@ -74,39 +62,46 @@ resource "aws_security_group" "rds_sg" {
 # INSTANCE
 #################################
 
-# Multi-AZ PostgreSQL RDS instance
+# RDS instance
 resource "aws_db_instance" "rds_instance" {
-  identifier                  = "${var.project}-rds-instance"
-  allocated_storage           = 20
-  engine                      = "postgres"
-  engine_version              = "17.4"
-  instance_class              = var.rds_instance_type
-  manage_master_user_password = true
-  username                    = var.rds_username
-  skip_final_snapshot         = true
-  db_subnet_group_name        = aws_db_subnet_group.rds_subnet_group.name
-  vpc_security_group_ids      = [aws_security_group.rds_sg.id]
-  multi_az                    = true
-  publicly_accessible         = false
+  identifier             = "${var.project}-rds-instance"
+  allocated_storage      = 20
+  engine                 = "postgres"
+  engine_version         = "17.4"
+  instance_class         = var.rds_instance_type
+  username               = var.rds_username
+  password               = var.rds_password
+  skip_final_snapshot    = true
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  multi_az               = false
+  publicly_accessible    = false
 
   tags = {
     Name = "${var.project}-rds-instance"
   }
 }
 
-# Retrieve RDS master password from Secrets Manager (managed by RDS)
-data "aws_secretsmanager_secret" "rds_master_user_secret" {
-  arn = aws_db_instance.rds_instance.master_user_secret[0].secret_arn
-}
-
-data "aws_secretsmanager_secret_version" "rds_master_password_version" {
-  secret_id = data.aws_secretsmanager_secret.rds_master_user_secret.id
-}
-
 # Store RDS endpoint in SSM Parameter Store
 resource "aws_ssm_parameter" "rds_endpoint" {
-  name        = "/${var.project}/rds/endpoint"
-  type        = "String"
+  name        = "/airflow/variables/rds_endpoint"
+  type        = "SecureString"
   value       = aws_db_instance.rds_instance.address
   description = "RDS endpoint for ${var.project}"
+}
+
+# Store RDS username in SSM Parameter Store
+resource "aws_ssm_parameter" "rds_username" {
+  name        = "/airflow/variables/rds_username"
+  type        = "SecureString"
+  value       = var.rds_username
+  description = "RDS username for ${var.project}"
+}
+
+# Store RDS username in SSM Parameter Store
+resource "aws_ssm_parameter" "rds_password" {
+  name        = "/airflow/variables/rds_password"
+  type        = "SecureString"
+  value       = var.rds_password
+  description = "RDS password for ${var.project}"
 }

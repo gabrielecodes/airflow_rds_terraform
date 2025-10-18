@@ -18,3 +18,11 @@ resource "aws_vpc" "main" {
     Name = "main"
   }
 }
+
+resource "aws_bucket" "dags_bucket" {
+  bucket = var.dags_bucket
+
+  tags = {
+    Name = "${var.project}-dags-bucket"
+  }
+}
