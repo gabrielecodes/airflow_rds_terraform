@@ -1,16 +1,14 @@
 # Teffaform Config: Airflow + Postgres RDS instance on AWS
 
-This config setups an airflow instance available to your IP only (SSH and Web access are granted via Security Group Ingress rules)
-plus a Postgres RDS instance with a master and 2 replicas in different zones and in private subnets.
-
-You can acces the Airflow instance with its url and use the `username` and `password` to login.
+This config setups an EC2 instance with Airflow in a public subnet and an RDS Postgres database in a private subnet, reachable by Airflow.
+The Airflow instance is reachable via SSH using that can be generated via `ssh-keygen` (see [step 1](#step-1) and the resource `sg` in `airflow/main.tf`)
+The EC2 instance's security group includes an ingress rule that permits SSH access from the IP address of the machine executing the terraform apply command.
 
 # What you get
 
 1. An EC2 instance running the Airflow frontend (_no https in this version_).
-2. An RDS instance with a master and 2 replicas that servers as main database.
-3. A bucket where to load the DAGs that will be available in Airflow.
-4. Airflow is configured to run[ dbt](https://www.getdbt.com/) on the RDS instance to generate tables.
+2. An RDS instance with a Postgres database.
+3. A bucket name, which is used to provision a storage bucket for storing Airflow DAGs.
 
 # Setup
 
@@ -23,7 +21,7 @@ You need:
 3. You will be prompted by terraform for a `username` and `password` for the Airflow frontend as well as for a `username` and `password` for the RDS instance.
    Note that the RDS `username` and `password` are never stored as environment variables. They are used to launch the instance and stored in SSM as `SecretString`.
    They be retrieved in dags as shown below in the section [Running DAGs on the RDS Postgres Database](#running-dags-on-the-rds-postgres-database)
-4. You will also be prompted for a `bucket name for the Airflow dags. Airflow ill pick them up from that bucket.
+4. You will also be prompted for a bucket name. Airflow ill pick up DAGs from that bucket.
 
 ### Step 1
 
@@ -43,7 +41,8 @@ Use the private key to connect via SSH to the instance with:
 ssh -i <key_name> ubuntu@<public_ip_address>
 ```
 
-The public IP address of the instance is visible via the AWS console and it's also written as an output by terraform (see the variable `airflow_public_ip` in `airflow/outputs.tf`). Consider removing this output for production builds.
+The public IP address of the instance is visible via the AWS console and it's also written as an output by terraform (see `airflow/outputs.tf`).
+Consider removing this output for production builds.
 
 ### Step 2
 
