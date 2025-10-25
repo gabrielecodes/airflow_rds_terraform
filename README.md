@@ -1,14 +1,14 @@
-# Teffaform Config: Airflow + Postgres RDS instance on AWS
+# Terraform Config: Airflow + Postgres RDS instance on AWS
 
-This config setups an EC2 instance with Airflow in a public subnet and an RDS Postgres database in a private subnet, reachable by Airflow.
-The Airflow instance is reachable via SSH using that can be generated via `ssh-keygen` (see [step 1](#step-1) and the resource `sg` in `airflow/main.tf`)
-The EC2 instance's security group includes an ingress rule that permits SSH access from the IP address of the machine executing the terraform apply command.
+This Terraform configuration provides an isolated environment for data orchestration by deploying Apache Airflow on an EC2 instance, backed by a PostgreSQL RDS database within a private AWS subnet. This setup is provides a platform for managing data pipelines and workflows and run DBT.
 
 # What you get
 
-1. An EC2 instance running the Airflow frontend (_no https in this version_).
-2. An RDS instance with a Postgres database.
-3. A bucket name, which is used to provision a storage bucket for storing Airflow DAGs.
+This configuration provisions the following key components to establish your data orchestration environment:
+
+1.  **Airflow EC2 Instance:** A dedicated EC2 instance running the Apache Airflow frontend, providing a web-based interface to monitor and manage your DAGs. (Note: HTTPS is not configured in this version).
+2.  **PostgreSQL RDS Database:** A fully managed AWS RDS instance with a PostgreSQL database, serving as a data warehouse.
+3.  **S3 Bucket for DAGs:** An S3 bucket designated for storing your Airflow DAGs.
 
 # Setup
 
@@ -25,7 +25,7 @@ You need:
 ### Step 1
 
 The Airflow security group allows your IP to connect via SSH using a key.
-If less restrictive rules are desired, modify the security group of the airflow ec2 instance adding ingress rules.
+If less restrictive rules are desired, modify the security group of the Airflow EC2 instance by adding ingress rules.
 
 The first step is to generate the SSH key:
 
@@ -56,7 +56,7 @@ to initialize terraform. Then use
 terraform plan
 ```
 
-to check the resources provisioned by this repo. Finally apply this config to provision the resouces with
+to check the resources provisioned by this repo. Finally apply this config to provision the resources with
 
 ```
 terraform apply
@@ -78,11 +78,11 @@ connection schema: the name of the schema in the postgres database
 connection port: port for the postgres database (see AWS console), typically 5432
 ```
 
-You can add a dag to the bucket and it will be added to Airflow within 30 seconds.
+You can add a DAG to the bucket and it will be added to Airflow within 30 seconds.
 
 ## Running DBT in a DAGs
 
-An example of Airflow dag executing `dbt run` is available in the script `dbt_daily.py`.
+An example of Airflow DAG executing `dbt run` is available in the script `dbt_daily.py`.
 Replace the variable `DBT_ECR_IMAGE` with the name of the image containing your dbt project.
 The container should have:
 
@@ -90,7 +90,7 @@ The container should have:
 - a clone of your dbt repository.
 - Configure the `profile.yaml` of your dbt project to use environment variables (see example below)
 
-Here is an example of `project.yaml`:
+Here is an example of `profiles.yml`:
 
 ```yaml
 my_project:
