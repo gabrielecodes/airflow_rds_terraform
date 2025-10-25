@@ -19,13 +19,12 @@ You need:
 1. a valid aws region where to provision the resources (e.g. "us-west-1").
 2. A project name (e.g. "my-airflow-rds-project").
 3. You will be prompted by terraform for a `username` and `password` for the Airflow frontend as well as for a `username` and `password` for the RDS instance.
-   Note that the RDS `username` and `password` are never stored as environment variables. They are used to launch the instance and stored in SSM as `SecretString`.
-   They be retrieved in dags as shown below in the section [Running DAGs on the RDS Postgres Database](#running-dags-on-the-rds-postgres-database)
-4. You will also be prompted for a bucket name. Airflow ill pick up DAGs from that bucket.
+   The RDS `username` and `password` are never stored as environment variables.
+4. You will also be prompted for a bucket name. Airflow DAGs are stored in this bucket.
 
 ### Step 1
 
-The Airflow instance is configured to accept SSH connections allowing your IP to connect.
+The Airflow security group allows your IP to connect via SSH using a key.
 If less restrictive rules are desired, modify the security group of the airflow ec2 instance adding ingress rules.
 
 The first step is to generate the SSH key:
@@ -34,15 +33,14 @@ The first step is to generate the SSH key:
 ssh-keygen -t rsa -b 4096 -m PEM -f <key_name>
 ```
 
-which generates in the current directory a public key (file `<key_name>.pub`) and private key (file `<key_name>`).
+which generates a public key (file `<key_name>.pub`) and private key (file `<key_name>`) in the current directory.
 Use the private key to connect via SSH to the instance with:
 
 ```
 ssh -i <key_name> ubuntu@<public_ip_address>
 ```
 
-The public IP address of the instance is visible via the AWS console and it's also written as an output by terraform (see `airflow/outputs.tf`).
-Consider removing this output for production builds.
+The public IP address of the instance is visible via the AWS console.
 
 ### Step 2
 
@@ -66,22 +64,33 @@ terraform apply
 
 It will take up to 5 minutes for Airflow to be up and running.
 
-### Step 3
-
-Use the private key generated in [step 1](#step-1) to SSH into the instance and clone your
-dbt repository at a chosen path. (see`/path/to/dbt/` referenced later). You'll need git
-credentials to perform this step or perform this step as part of a deployment strategy (e.g. with
-GitHub Actions or similar).
-
 ### Step 4
 
-Add a dag to the bucket and it will be picked up by Airflow within 30 seconds.
+Add an Airflow Connection to the postgres RDS instance via the UI.
+You'll need the following parameters:
 
-## Running DAGs on the RDS Postgres Database
+```
+connection type: 'postgres'
+connection host: rds address visible via the AWS console, RDS page
+connection login: the username you've chosen (see [prerequisites](#prerequisites))
+connection password: the password you've chosen (see [prerequisites](#prerequisites))
+connection schema: the name of the schema in the postgres database
+connection port: port for the postgres database (see AWS console), typically 5432
+```
 
-In order not to store usernames and passwords
+You can add a dag to the bucket and it will be added to Airflow within 30 seconds.
 
-The dbt `profiles.yaml` must be configured to reach the RDS instance. Here is an example:
+## Running DBT in a DAGs
+
+An example of Airflow dag executing `dbt run` is available in the script `dbt_daily.py`.
+Replace the variable `DBT_ECR_IMAGE` with the name of the image containing your dbt project.
+The container should have:
+
+- an installation of `dbt-core` and `dbt-postgres`.
+- a clone of your dbt repository.
+- Configure the `profile.yaml` of your dbt project to use environment variables (see example below)
+
+Here is an example of `project.yaml`:
 
 ```yaml
 my_project:
@@ -90,31 +99,11 @@ my_project:
     dev:
       type: postgres
       host: "{{ env_var('DBT_HOST') }}"
-      port: 5432
       user: "{{ env_var('DBT_USER') }}"
       password: "{{ env_var('DBT_PASSWORD') }}"
-      dbname: my_database
+      port: 5432
+      dbname: "{{ env_var('DBT_DBNAME') }}"
       schema: public
-```
-
-To run commands like `dbt run` in a DAG, you can use a DockerOperator passing the environment
-variables necessaty to run `dbt`. Here below `/path/to/dbt` is the path where the `dbt` repo
-has been cloned.
-
-```py
-DockerOperator(
-    task_id="dbt_run",
-    image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
-    command="dbt run",
-    environment={
-        "DBT_HOST": "{{ var.value.rds_host }}",
-        "DBT_USER": "{{ var.value.rds_username }}",
-        "DBT_PASSWORD": "{{ var.value.rds_password }}"
-    },
-    volumes=["/path/to/dbt:/usr/dbt"],
-    working_dir="/usr/dbt",
-    auto_remove=True,
-)
 ```
 
 ## TODO

@@ -4,7 +4,7 @@
 
 # Public subnet
 resource "aws_subnet" "public" {
-  vpc_id                  = var.vpc_id
+  vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidr
   map_public_ip_on_launch = true
 }
@@ -22,7 +22,7 @@ locals {
 resource "aws_security_group" "sg" {
   name        = "test-sg"
   description = "Allow SSH to my IP and web access"
-  vpc_id      = var.vpc_id
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     description = "Inbound SSH"
@@ -54,7 +54,7 @@ resource "aws_security_group" "sg" {
 
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
-  vpc_id = var.vpc_id
+  vpc_id = aws_vpc.main.id
 
   tags = {
     Name = "${var.project}-igw"
@@ -63,7 +63,7 @@ resource "aws_internet_gateway" "igw" {
 
 # Public route table
 resource "aws_route_table" "public_rt" {
-  vpc_id = var.vpc_id
+  vpc_id = aws_vpc.main.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -117,29 +117,30 @@ resource "aws_iam_role_policy_attachment" "ec2_instance_role_attachment" {
 }
 
 # Read username, password and endpoint from SSM
-resource "aws_iam_policy" "ssm_read_limited" {
-  name        = "${var.project}-ssm-read-limited"
-  description = "Allow EC2 to read specific SSM parameters"
+# resource "aws_iam_policy" "ssm_read_limited" {
+#   name        = "${var.project}-ssm-read-limited"
+#   description = "Allow EC2 to read specific SSM parameters"
 
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "ssm:GetParameter",
-          "ssm:GetParametersByPath"
-        ],
-        Resource : "arn:aws:ssm:*:*:parameter/airflow/variables/*"
-      }
-    ]
-  })
-}
+#   policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         Effect = "Allow",
+#         Action = [
+#           "ssm:GetParameter",
+#           "ssm:GetParameters",
+#           "ssm:GetParametersByPath"
+#         ],
+#         Resource : "arn:aws:ssm:${var.region}:${var.account_id}:parameter/airflow/variables/*"
+#       }
+#     ]
+#   })
+# }
 
-resource "aws_iam_role_policy_attachment" "ssm_read_attach" {
-  role       = aws_iam_role.ec2_instance_role.name
-  policy_arn = aws_iam_policy.ssm_read_limited.arn
-}
+# resource "aws_iam_role_policy_attachment" "ssm_read_attach" {
+#   role       = aws_iam_role.ec2_instance_role.name
+#   policy_arn = aws_iam_policy.ssm_read_limited.arn
+# }
 
 # Airflow instance
 resource "aws_instance" "airflow" {
@@ -152,8 +153,11 @@ resource "aws_instance" "airflow" {
   user_data = templatefile("${path.root}/cloud-init.yaml", {
     airflow_username = var.airflow_username
     airflow_password = var.airflow_password
-    rds_endpoint     = var.rds_endpoint
     dags_bucket      = var.dags_bucket
+    rds_host         = aws_db_instance.rds_instance.address
+    rds_port         = aws_db_instance.rds_instance.port
+    rds_username     = var.rds_username
+    rds_password     = var.rds_password
   })
 
   iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
@@ -167,4 +171,6 @@ resource "aws_instance" "airflow" {
   tags = {
     Name = "${var.project}-airflow-instance"
   }
+
+  depends_on = [aws_db_instance.rds_instance]
 }

@@ -4,7 +4,7 @@
 
 # RDS master subnet
 resource "aws_subnet" "rds_master" {
-  vpc_id            = var.vpc_id
+  vpc_id            = aws_vpc.main.id
   cidr_block        = var.rds_master_subnet_cidr
   availability_zone = "${var.region}a"
 
@@ -14,7 +14,7 @@ resource "aws_subnet" "rds_master" {
 }
 
 resource "aws_subnet" "rds_master_b" {
-  vpc_id            = var.vpc_id
+  vpc_id            = aws_vpc.main.id
   cidr_block        = var.rds_master_subnet_cidr_b
   availability_zone = "${var.region}b"
 
@@ -37,13 +37,13 @@ resource "aws_db_subnet_group" "rds_subnet_group" {
 resource "aws_security_group" "rds_sg" {
   name        = "${var.project}-rds-sg"
   description = "Allow Postgres access from public subnet"
-  vpc_id      = var.vpc_id
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [var.front_sg_id]
+    security_groups = [aws_security_group.sg.id]
   }
 
   egress {
@@ -82,26 +82,13 @@ resource "aws_db_instance" "rds_instance" {
   }
 }
 
-# Store RDS endpoint in SSM Parameter Store
-resource "aws_ssm_parameter" "rds_endpoint" {
-  name        = "/airflow/variables/rds_endpoint"
-  type        = "SecureString"
-  value       = aws_db_instance.rds_instance.address
-  description = "RDS endpoint for ${var.project}"
-}
+# Store the postgres connection so Airflow dags can connect to postgres
+resource "aws_ssm_parameter" "airflow_postgres_conn" {
+  name = "/airflow/connections/postgres_url"
+  type = "SecureString"
 
-# Store RDS username in SSM Parameter Store
-resource "aws_ssm_parameter" "rds_username" {
-  name        = "/airflow/variables/rds_username"
-  type        = "SecureString"
-  value       = var.rds_username
-  description = "RDS username for ${var.project}"
-}
+  # {schema}://{login}:{password}@{host}:{port}/{database_name}
+  value = "postgresql://${var.rds_username}:${var.rds_password}@${aws_db_instance.rds_instance.address}:5432/postgres"
 
-# Store RDS username in SSM Parameter Store
-resource "aws_ssm_parameter" "rds_password" {
-  name        = "/airflow/variables/rds_password"
-  type        = "SecureString"
-  value       = var.rds_password
-  description = "RDS password for ${var.project}"
+  description = "Airflow Connection URI"
 }
